@@ -4,7 +4,25 @@ A hands-on, **offline** Terraform tutorial. Ten progressive exercises that run e
 
 If you're new to Terraform and want a deliberate, reading-the-plan-output style of practice before you touch real infrastructure, this is for you.
 
-## Start here
+## Two ways to use this repo
+
+### A — Interactive web tutorial (recommended for first-time learners)
+
+The repo ships a small Dockerized web app that wraps the same content with an in-browser editor, instant structural validation of your HCL, persistent progress, and a "show solution" reveal. The only thing you need installed is Docker.
+
+```bash
+git clone https://github.com/bhokaremoin/terraform-learning.git
+cd terraform-learning
+make up
+```
+
+That builds the image (first run only — subsequent starts reuse layers) and opens <http://localhost:8080> in your browser. `make down` stops it. `make help` lists all targets.
+
+The web app validates 7 of the 10 exercises automatically (it parses your HCL in the browser — no Terraform process runs server-side, no code of yours is executed). The other 3 are observational exercises with a guided self-attest flow. See [`docs/plans/`](./docs/plans/) for the design.
+
+### B — Static markdown tutorial (the original way)
+
+If you'd rather work in your editor and the terminal, the markdown tutorial works on its own:
 
 1. Install Terraform (instructions in [`00-START-HERE.md`](./00-START-HERE.md)).
 2. Read [`00-START-HERE.md`](./00-START-HERE.md) end to end — it covers the mental model, the four-command workflow, and how to use the tutorial.
@@ -30,10 +48,15 @@ Keep [`CHEATSHEET.md`](./CHEATSHEET.md) open in a tab while you work.
 ├── 09-modules/                       Extract reusable units; call the same module twice.
 │   └── modules/greeting/             A small, self-contained module to read alongside.
 ├── 10-state-commands/                Inspect and surgically edit state with mv/rm/import.
+├── app/                              Interactive web app (Vite + React + TypeScript), served by nginx in Docker.
+├── docker-compose.yml                Single-service compose: builds and serves the SPA.
+├── Makefile                          `make up` / `down` / `dev` / `test` / `logs` / `clean`.
+├── docs/brainstorms/                 Requirements docs.
+├── docs/plans/                       Implementation plans.
 ├── GENERATION.md                     How this repo was generated (Claude Code, the original prompt, model details).
 ├── CHEATSHEET.md                     (see above)
 ├── LICENSE                           MIT.
-└── .gitignore                        Ignores .terraform/, *.tfstate, generated files, etc.
+└── .gitignore                        Ignores .terraform/, *.tfstate, generated files, build artifacts, etc.
 ```
 
 Every exercise directory contains three files:

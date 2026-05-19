@@ -1,0 +1,13 @@
+# Single-service compose: builds the SPA from ./app and serves it via nginx.
+# No volumes, no persistence — learner progress lives in browser localStorage.
+
+services:
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: terraform-learning-web:local
+    container_name: terraform-learning-web
+    ports:
+      - "8080:80"
+    restart: unless-stopped

@@ -1,0 +1,27 @@
+{
+  "name": "terraform-learning-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Interactive web UI for the terraform-learning tutorial",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host --port 8080",
+    "lint": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.1",
+    "vitest": "^2.1.5"
+  }
+}
