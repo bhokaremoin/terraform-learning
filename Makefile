@@ -1,13 +1,12 @@
 # terraform-learning — top-level Makefile
 #
-# The primary entry point is `make up`. It builds the Docker image (first run
-# only — subsequent runs reuse layers) and starts the container, then prints
-# the URL.
+# Primary entry point: `make up`. First run installs npm deps and starts the
+# Vite dev server. Subsequent runs reuse the install cache and start fast.
 #
-# Contributors who want to iterate on the SPA without rebuilding the Docker
-# image each time can use `make dev` instead (requires Node 20+ on the host).
+# Prerequisite: Node.js 20+ (https://nodejs.org or via your package manager).
+# Check with: `node -v` (must be >= 20).
 
-URL ?= http://localhost:8080
+URL ?= http://localhost:5173
 
 .DEFAULT_GOAL := help
 
@@ -16,45 +15,42 @@ URL ?= http://localhost:8080
 help:
 	@printf "\nterraform-learning — make targets\n\n"
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /' | column -t -s ':'
-	@printf "\nQuickstart: make up\n\n"
+	@printf "\nQuickstart: make up\n"
+	@printf "Requires: Node.js 20+ on PATH\n\n"
 
-## up: build (if needed) and start the web app; open it in the browser
+## up: install deps if needed, then start the Vite dev server (opens browser)
 .PHONY: up
-up:
-	docker compose up -d --build
-	@echo ""
-	@echo "Web tutorial running at $(URL)"
-	@command -v open >/dev/null 2>&1 && open $(URL) || \
-	 command -v xdg-open >/dev/null 2>&1 && xdg-open $(URL) || \
-	 echo "(open $(URL) manually)"
+up: install
+	@command -v open >/dev/null 2>&1 && (sleep 2 && open $(URL)) & \
+	 command -v xdg-open >/dev/null 2>&1 && (sleep 2 && xdg-open $(URL)) &
+	cd app && npm run dev
 
-## down: stop the web app container
-.PHONY: down
-down:
-	docker compose down
+## install: install npm dependencies (idempotent; skipped if up to date)
+.PHONY: install
+install:
+	@cd app && [ -d node_modules ] || npm install
 
-## build: build the Docker image without starting it
+## build: produce a production build at app/dist/
 .PHONY: build
-build:
-	docker compose build
+build: install
+	cd app && npm run build
 
-## logs: tail container logs
-.PHONY: logs
-logs:
-	docker compose logs -f web
+## preview: serve the production build at $(URL) for a smoke check
+.PHONY: preview
+preview: build
+	cd app && npm run preview
 
-## dev: run the Vite dev server on the host (requires Node 20+)
-.PHONY: dev
-dev:
-	cd app && npm install && npm run dev
-
-## test: run the SPA unit tests on the host (requires Node 20+)
+## test: run the SPA unit tests
 .PHONY: test
-test:
-	cd app && npm install && npm test
+test: install
+	cd app && npm test
 
-## clean: stop and remove containers, images, and local build artifacts
+## lint: run the TypeScript compiler in --noEmit mode
+.PHONY: lint
+lint: install
+	cd app && npm run lint
+
+## clean: remove install + build artifacts
 .PHONY: clean
 clean:
-	-docker compose down -v --rmi local --remove-orphans
-	rm -rf app/dist app/node_modules
+	rm -rf app/node_modules app/dist app/.vite app/coverage

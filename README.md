@@ -8,7 +8,7 @@ If you're new to Terraform and want a deliberate, reading-the-plan-output style 
 
 ### A — Interactive web tutorial (recommended for first-time learners)
 
-The repo ships a small Dockerized web app that wraps the same content with an in-browser editor, instant structural validation of your HCL, persistent progress, and a "show solution" reveal. The only thing you need installed is Docker.
+The repo ships a small web app that wraps the same content with an in-browser editor, instant structural validation of your HCL, persistent progress, and a "show solution" reveal. The only thing you need installed is **Node.js 20+**.
 
 ```bash
 git clone https://github.com/bhokaremoin/terraform-learning.git
@@ -16,9 +16,9 @@ cd terraform-learning
 make up
 ```
 
-That builds the image (first run only — subsequent starts reuse layers) and opens <http://localhost:8080> in your browser. `make down` stops it. `make help` lists all targets.
+First run installs npm dependencies (~30s on a good network) and starts the Vite dev server. It opens <http://localhost:5173> in your browser. Stop it with `Ctrl+C`. `make help` lists all targets.
 
-The web app validates 7 of the 10 exercises automatically (it parses your HCL in the browser — no Terraform process runs server-side, no code of yours is executed). The other 3 are observational exercises with a guided self-attest flow. See [`docs/plans/`](./docs/plans/) for the design.
+The web app validates 7 of the 10 exercises automatically (it parses your HCL in the browser — no Terraform process runs anywhere, no code of yours is executed). The other 3 are observational exercises with a guided self-attest flow. See [`docs/plans/`](./docs/plans/) for the design.
 
 ### B — Static markdown tutorial (the original way)
 
@@ -48,9 +48,8 @@ Keep [`CHEATSHEET.md`](./CHEATSHEET.md) open in a tab while you work.
 ├── 09-modules/                       Extract reusable units; call the same module twice.
 │   └── modules/greeting/             A small, self-contained module to read alongside.
 ├── 10-state-commands/                Inspect and surgically edit state with mv/rm/import.
-├── app/                              Interactive web app (Vite + React + TypeScript), served by nginx in Docker.
-├── docker-compose.yml                Single-service compose: builds and serves the SPA.
-├── Makefile                          `make up` / `down` / `dev` / `test` / `logs` / `clean`.
+├── app/                              Interactive web app (Vite + React + TypeScript).
+├── Makefile                          `make up` (start), `build`, `preview`, `test`, `lint`, `clean`.
 ├── docs/brainstorms/                 Requirements docs.
 ├── docs/plans/                       Implementation plans.
 ├── GENERATION.md                     How this repo was generated (Claude Code, the original prompt, model details).

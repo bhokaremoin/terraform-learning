@@ -17,7 +17,7 @@ We want to wrap the same authored content in a small interactive web app that gi
 
 ## Requirements
 
-- **R1.** `git clone` followed by `make up` boots the application. The only host prerequisite is Docker. No Node, no Terraform, no other tools need to be installed.
+- **R1.** `git clone` followed by `make up` boots the application. The only host prerequisite is Node.js 20+. No Terraform, no Docker, no other tools need to be installed. *(Originally specified Docker; revised mid-implementation — see Key Decisions.)*
 - **R2.** Once booted, the app is reachable in a local browser on a predictable port; the README documents the URL.
 - **R3.** All 10 existing exercises (`01-hello-world` … `10-state-commands`) are presented in order with current-exercise nav (prev/next) and a sidebar showing all 10 with completion status.
 - **R4.** Each exercise screen renders the exercise's existing prose content (Concept, Task, Run it, Predict-then-verify, Hints in collapsible sections, Common pitfalls, Experiments) directly from the existing markdown files. No prose is duplicated between markdown and the web app.
@@ -54,14 +54,14 @@ We want to wrap the same authored content in a small interactive web app that gi
 ## Key Decisions
 
 - **Validation strategy: structural, in-browser.** Parse user HCL with an HCL JS library; run per-exercise assertion functions. Chosen over server-side `terraform plan` (heavy, requires backend + sandbox) and over "self-attest only" (loses the value-add over the static repo). Honest about checking shape rather than behavior; that's a fair trade for a fundamentals tutorial that already teaches "read the plan output for real verification."
-- **Bootstrap: `docker compose up`.** Single host dependency (Docker, which most developers already have). Reproducible across macOS/Linux/Windows-with-WSL. Matches the user's mental model exactly. Tradeoff: cold start is slower than a Node dev server, but only the first time.
+- **Bootstrap: Node toolchain (`make up` runs `npm install && npm run dev`).** Single host dependency (Node 20+, which most modern dev environments already have). Faster cold start than Docker, no daemon to manage, no image-build friction. *(Initial decision was Docker compose; revised during Phase 1 after a build-context bug surfaced and the Docker path proved high-friction for a tutorial repo. The Node path also matches contributors' likely dev environment more naturally.)*
 - **Coverage: all 10 exercises, mixed validation model.** Seven get auto-validation; three are explicit "observation exercises" with a self-attest flow. Preserves the pedagogically richest exercises (drift, replacement, state surgery) instead of cutting them, and is honest about which exercises are about writing HCL vs. reading terraform's behavior.
 - **Persistence: browser-local storage.** Forced by "no backend." Sufficient for single-user single-browser progress. A user switching browsers/machines starts over — acceptable for a tutorial.
 - **Content source of truth: existing markdown files.** The web app reads from the same `01-hello-world/README.md`, `main.tf`, `SOLUTION.md` files the static tutorial uses. No duplicated prose. Authoring stays in markdown.
 
 ## Dependencies / Assumptions
 
-- The user has Docker (Desktop, Engine, or compatible) installed and running.
+- The user has Node.js 20+ installed (https://nodejs.org or via a package manager).
 - The user has a modern browser (last two major versions of Chrome, Firefox, or Safari).
 - The existing exercise directories are stable in name and file layout; the web app's build step assumes `NN-name/{README.md, main.tf, SOLUTION.md}`.
 - Browser localStorage capacity is more than sufficient (each exercise's typed code is well under 10KB; 10 exercises × ~10KB is negligible against the typical 5MB cap).

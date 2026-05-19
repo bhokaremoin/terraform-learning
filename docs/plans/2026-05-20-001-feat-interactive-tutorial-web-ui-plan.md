@@ -48,7 +48,7 @@ A global "Reset all progress" button in the header clears all `localStorage` key
 | Code editor | **CodeMirror 6** with `@codemirror/basic-setup`-style composition; HCL syntax via a custom simple highlighter (or community `lezer-hcl` if usable) | Lighter than Monaco (~150KB vs ~3MB); composable; sufficient editor feel. Monaco would be overkill for tutorial-length snippets. |
 | HCL parser | **Handwritten subset parser in TS** (`app/src/lib/hcl.ts`) | The HCL surface we need is small (blocks, attrs, primitive literals, references, function calls, interpolations). A ~500-line tolerant parser gives a tighter bundle, learner-tailored error messages, and zero WASM tooling. **Fallback:** if drift becomes painful, swap in `@cdktf/hcl2json` via `vite-plugin-wasm` (decision deferred to Phase 3 spike). |
 | Persistence | **`localStorage`** | Forced by "no backend." Capacity is more than enough (10 exercises × <10KB code each ≪ 5MB cap). |
-| Container runtime | **`nginx:alpine`** with prebuilt SPA from a `node:20-alpine` builder stage | Tiny final image; nginx serves static + SPA fallback (`try_files`). |
+| Container runtime | ~~`nginx:alpine` with prebuilt SPA from `node:20-alpine`~~ **Dropped during Phase 1**: switched to a Node-direct boot (`make up` runs `npm install && npm run dev`). Reason: Docker added real friction (daemon dependency, build-context wiring bug on the `[0-9][0-9]-*/` COPY) for a tutorial repo where Node is already a more natural single-tool ask. A future hosted-version path (e.g., GitHub Pages serving `app/dist/`) doesn't need Docker either. |
 | Test runner | **Vitest** | Vite-native; same config as the app; fast. |
 
 ### File layout (additive, the existing repo is untouched)
@@ -116,19 +116,15 @@ terraform-learning/
 ### Build / run flow
 
 ```
-make up      →  docker compose up -d --build  →  build SPA in node:20-alpine stage
-                                              →  copy dist/ to nginx:alpine
-                                              →  expose :8080
-                                              →  echo "open http://localhost:8080"
-
-make dev     →  cd app && npm install && npm run dev   (host-side, requires Node — for contributors)
-make down    →  docker compose down
-make build   →  docker compose build
-make logs    →  docker compose logs -f
-make clean   →  docker compose down -v && rm -rf app/dist app/node_modules
+make up       →  npm install (first run only) && npm run dev → opens http://localhost:5173
+make build    →  npm install && npm run build → emits app/dist/
+make preview  →  npm install && npm run build && npm run preview → serves dist/ for smoke check
+make test     →  vitest run
+make lint     →  tsc --noEmit
+make clean    →  rm -rf app/node_modules app/dist app/.vite app/coverage
 ```
 
-`docker-compose.yml` mounts no source — the image is self-contained. Port mapping is `8080:80`. No volumes; learner progress is per-browser, not per-container.
+No Docker, no daemons. Learner progress lives in browser localStorage. Future hosted-version path: run `make build` and publish `app/dist/` (e.g., to GitHub Pages on a tag).
 
 ### Validator authoring contract
 
