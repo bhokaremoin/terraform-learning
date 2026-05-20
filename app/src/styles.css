@@ -261,6 +261,70 @@ pre code { background: none; padding: 0; }
   margin-top: 0.5rem;
 }
 
+/* ----- Editor panel ----- */
+.editor-panel {
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  border-radius: 8px;
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 6rem);
+  min-height: 360px;
+  overflow: hidden;
+}
+.editor-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.editor-panel__title { margin: 0; font-size: 0.9rem; font-weight: 600; }
+.editor-panel__reset {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.editor-panel__reset:hover { color: var(--fg); background: var(--hover); }
+.editor-panel__footer { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); }
+.editor-panel__hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* CodeMirror host */
+.editor {
+  flex: 1;
+  min-height: 240px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.editor .cm-editor {
+  height: 100%;
+}
+.editor .cm-gutters {
+  background: var(--bg-alt);
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+}
+.editor .cm-activeLine { background: var(--hover); }
+.editor .cm-activeLineGutter { background: var(--hover); }
+.editor .cm-cursor { border-left-color: var(--fg); }
+.editor .cm-content { caret-color: var(--fg); color: var(--fg); }
+.editor .cm-line { padding: 0 8px; }
+.editor .cm-selectionBackground,
+.editor .cm-focused .cm-selectionBackground,
+.editor ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
 /* ----- Markdown content (READMEs) ----- */
 .markdown h1, .markdown h2, .markdown h3 {
   border-bottom: 1px solid var(--border);
