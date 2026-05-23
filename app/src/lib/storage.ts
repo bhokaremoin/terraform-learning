@@ -57,6 +57,22 @@ function safeSetJson(key: string, value: unknown): void {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Change notification (component subscription)                               */
+/* -------------------------------------------------------------------------- */
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+export function subscribeStorage(fn: Listener): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+function notify(): void {
+  for (const fn of listeners) fn();
+}
+
+/* -------------------------------------------------------------------------- */
 /* Public API                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -103,6 +119,7 @@ export function getProgress(): Progress {
 function withProgress(mutator: (p: Progress) => Progress): void {
   const next = mutator(getProgress());
   safeSetJson(KEY_PROGRESS, next);
+  notify();
 }
 
 export function markCompleted(id: ExerciseId): void {
@@ -140,6 +157,7 @@ export function resetAll(): void {
     if (k && k.startsWith(STORAGE_PREFIX)) toRemove.push(k);
   }
   for (const k of toRemove) ls.removeItem(k);
+  notify();
 }
 
 export const _empty: Readonly<Progress> = EMPTY_PROGRESS;

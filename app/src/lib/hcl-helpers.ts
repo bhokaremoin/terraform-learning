@@ -21,8 +21,8 @@ import type {
 /* -------------------------------------------------------------------------- */
 
 export function findBlocks(ast: HclAst | HclBlock['body'], type: string): HclBlock[] {
-  const list = isAst(ast) ? ast.blocks : ast.blocks;
-  return list.filter((b) => b.type === type);
+  // Both `HclAst` and `HclBlock['body']` have a `blocks` array — no discriminator needed.
+  return ast.blocks.filter((b: HclBlock) => b.type === type);
 }
 
 export function findBlock(
@@ -73,10 +73,6 @@ export function findModuleCalls(ast: HclAst): HclBlock[] {
 
 export function findLocals(ast: HclAst): HclBlock | undefined {
   return findBlock(ast, 'locals');
-}
-
-function isAst(x: HclAst | HclBlock['body']): x is HclAst {
-  return Array.isArray((x as HclAst).blocks) && !('attributes' in (x as HclBlock['body']));
 }
 
 /* -------------------------------------------------------------------------- */

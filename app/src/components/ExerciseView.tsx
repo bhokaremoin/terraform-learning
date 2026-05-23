@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getExerciseById, getNextExerciseId, getPrevExerciseId } from '../lib/content';
+import { getRegistryEntry } from '../lib/registry';
 import { getCode, setCode, setCurrent } from '../lib/storage';
+import { useProgress } from '../lib/useProgress';
 import Editor from './Editor';
 import MarkdownRenderer from './MarkdownRenderer';
+import ObservationChecklist from './ObservationChecklist';
+import SolutionPanel from './SolutionPanel';
+import ValidationPanel from './ValidationPanel';
 
 const DEBOUNCE_MS = 250;
 
@@ -14,38 +19,36 @@ export default function ExerciseView() {
   const exercise = getExerciseById(id);
   if (!exercise) return <NotFound />;
 
+  const entry = getRegistryEntry(id);
   const prev = getPrevExerciseId(id);
   const next = getNextExerciseId(id);
+  const progress = useProgress();
+  const peeked = !!progress.peeked[id];
+  const completed = !!progress.completed[id];
 
-  // Track the current exercise in storage every time we land here.
   useEffect(() => {
     setCurrent(id);
   }, [id]);
 
-  // The initial editor value comes from storage (the user's last typed code
-  // for THIS exercise) or falls back to the starter shipped in main.tf.
+  // Editor state (auto exercises only — wraps with conditional below).
   const initialCode = useMemo(() => getCode(id) ?? exercise.starter, [id, exercise.starter]);
   const [editorValue, setEditorValue] = useState(initialCode);
 
-  // When we navigate between exercises, refresh the editor's seed value.
   useEffect(() => {
     setEditorValue(getCode(id) ?? exercise.starter);
   }, [id, exercise.starter]);
 
-  // Debounced persist on every keystroke.
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onEditorChange = useCallback(
     (value: string) => {
       setEditorValue(value);
       if (persistTimer.current) clearTimeout(persistTimer.current);
-      persistTimer.current = setTimeout(() => {
-        setCode(id, value);
-      }, DEBOUNCE_MS);
+      persistTimer.current = setTimeout(() => setCode(id, value), DEBOUNCE_MS);
     },
     [id],
   );
 
-  // Flush pending writes on unmount so a quick tab close doesn't lose them.
+  // Flush pending writes on unmount / id change.
   useEffect(() => {
     return () => {
       if (persistTimer.current) {
@@ -71,27 +74,26 @@ export default function ExerciseView() {
     <article className="exercise">
       <header className="exercise__header">
         <div>
-          <p className="exercise__eyebrow">Exercise {exercise.id}</p>
+          <p className="exercise__eyebrow">
+            Exercise {exercise.id}
+            {completed && <span className="exercise__done"> · completed</span>}
+            {peeked && !completed && <span className="exercise__done"> · solution peeked</span>}
+          </p>
           <h1 className="exercise__title">{stripIdPrefix(exercise.title)}</h1>
           {exercise.kind === 'observation' && (
             <p className="exercise__obs-tag">
-              Observation exercise · the learning happens in the terraform CLI; the web app guides you
-              through expected observations.
+              Observation exercise · the learning happens in the terraform CLI; tick the checklist after you've followed the steps locally.
             </p>
           )}
         </div>
         <nav className="exercise__nav" aria-label="Exercise navigation">
           {prev ? (
-            <Link className="exercise__nav-link" to={`/exercise/${prev}`}>
-              ← Prev
-            </Link>
+            <Link className="exercise__nav-link" to={`/exercise/${prev}`}>← Prev</Link>
           ) : (
             <span className="exercise__nav-link exercise__nav-link--disabled">← Prev</span>
           )}
           {next ? (
-            <Link className="exercise__nav-link" to={`/exercise/${next}`}>
-              Next →
-            </Link>
+            <Link className="exercise__nav-link" to={`/exercise/${next}`}>Next →</Link>
           ) : (
             <span className="exercise__nav-link exercise__nav-link--disabled">Next →</span>
           )}
@@ -101,9 +103,11 @@ export default function ExerciseView() {
       <div className="exercise__body">
         <section className="exercise__content">
           <MarkdownRenderer source={exercise.readme} />
+          <SolutionPanel exercise={exercise} previouslyPeeked={peeked} />
         </section>
+
         <aside className="exercise__side">
-          {exercise.kind === 'auto' ? (
+          {entry?.kind === 'auto' ? (
             <div className="editor-panel">
               <div className="editor-panel__toolbar">
                 <h3 className="editor-panel__title">Your HCL</h3>
@@ -117,26 +121,18 @@ export default function ExerciseView() {
                 </button>
               </div>
               <Editor value={editorValue} onChange={onEditorChange} />
-              <div className="editor-panel__footer">
-                <p className="editor-panel__hint">
-                  Your typed code is saved automatically in this browser. The "Validate" button (Phase 4)
-                  will check your HCL against the exercise's structural requirements.
-                </p>
-              </div>
+              <ValidationPanel exerciseId={id} code={editorValue} />
             </div>
+          ) : entry?.kind === 'observation' ? (
+            <ObservationChecklist
+              exerciseId={id}
+              spec={entry.observation}
+              initiallyCompleted={completed}
+            />
           ) : (
             <div className="placeholder-panel">
-              <h3>Observation flow</h3>
-              <p>
-                A checklist of expected observations lands in Phase 5. For now, follow the "Run it" steps
-                in the README locally and confirm you see the described output.
-              </p>
-              <details>
-                <summary>Peek at the starter HCL</summary>
-                <pre className="placeholder-panel__pre">
-                  <code>{exercise.starter}</code>
-                </pre>
-              </details>
+              <h3>Not registered</h3>
+              <p>This exercise has no auto-validator or observation spec — please file an issue.</p>
             </div>
           )}
         </aside>
@@ -153,9 +149,7 @@ function NotFound() {
   return (
     <div className="exercise">
       <h1>Exercise not found</h1>
-      <p>
-        <Link to="/">Return home</Link>.
-      </p>
+      <p><Link to="/">Return home</Link>.</p>
     </div>
   );
 }

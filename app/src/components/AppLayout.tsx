@@ -1,22 +1,20 @@
 import { Link, Outlet } from 'react-router-dom';
+import ProgressBar from './ProgressBar';
+import ResetButton from './ResetButton';
 import Sidebar from './Sidebar';
 
-/**
- * Top-level frame: header + sidebar + main outlet for routed content.
- */
 export default function AppLayout() {
   return (
     <div className="app">
       <header className="header">
         <Link to="/" className="header__brand">
-          <span className="header__logo" aria-hidden="true">
-            ▲
-          </span>
+          <span className="header__logo" aria-hidden="true">▲</span>
           terraform-learning
         </Link>
-        <span className="header__hint">
-          Interactive Terraform fundamentals · runs offline
-        </span>
+        <div className="header__right">
+          <ProgressBar />
+          <ResetButton />
+        </div>
       </header>
       <div className="app__body">
         <Sidebar />
