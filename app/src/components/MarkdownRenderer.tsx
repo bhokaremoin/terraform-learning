@@ -7,6 +7,11 @@ import rehypeRaw from 'rehype-raw';
 // HCL is not built into highlight.js, so we alias hcl/terraform to `ini` —
 // it handles strings, comments, and `key = value` pairs well; block headers
 // like `resource "type" "name"` render unstyled, which is acceptable.
+//
+// We do NOT import a highlight.js stylesheet here. Token colors are defined
+// in src/styles.css via .hljs-* class rules that read from --tok-* CSS
+// variables, which automatically swap between light and dark via
+// prefers-color-scheme. One palette for the whole page.
 import bash from 'highlight.js/lib/languages/bash';
 import diff from 'highlight.js/lib/languages/diff';
 import ini from 'highlight.js/lib/languages/ini';
@@ -15,8 +20,6 @@ import json from 'highlight.js/lib/languages/json';
 import plaintext from 'highlight.js/lib/languages/plaintext';
 import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
-
-import 'highlight.js/styles/github-dark.css';
 
 const LANGUAGES = {
   bash,
