@@ -179,10 +179,15 @@ pre code {
  * App frame
  * ========================================================================= */
 
+/* App is locked to viewport height. The body NEVER scrolls — instead,
+ * the sidebar and the main column each have their own scroll region.
+ * This gives "frozen header + sidebar + side panel" behavior without
+ * needing position: fixed and the layout calculus that comes with it. */
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .header {
@@ -193,8 +198,7 @@ pre code {
   padding: var(--sp-3) var(--sp-6);
   border-bottom: 1px solid var(--border-soft);
   background: var(--bg);
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: 10;
 }
 .header__brand {
@@ -229,6 +233,7 @@ pre code {
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
+  overflow: hidden;     /* children handle their own scroll */
 }
 
 @media (max-width: 768px) {
@@ -472,12 +477,16 @@ pre code {
 
 /* Two-column grid: prose on the left, editor (or observation panel)
  * on the right. Editor grows generously on wide screens so it's actually
- * usable for code — capped only enough to keep reading flow on the left. */
+ * usable for code — capped only enough to keep reading flow on the left.
+ *
+ * align-items: stretch (the default — set explicitly here so it's obvious)
+ * lets the side column match the content column's height, which is what
+ * gives position:sticky on the editor room to slide as you scroll. */
 .exercise__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(480px, 720px);
   gap: var(--sp-6);
-  align-items: start;
+  align-items: stretch;
 }
 @media (min-width: 1600px) {
   .exercise__body {
@@ -498,14 +507,19 @@ pre code {
  * Editor panel
  * ========================================================================= */
 
+/* Sticky inside .main (which is now the scroll container). `top` is
+ * relative to .main's top edge, not the viewport — header is outside
+ * the scroll context so we don't add header-h here. */
 .editor-panel {
   border: 1px solid var(--border-soft);
   background: var(--bg);
   border-radius: var(--radius-lg);
   position: sticky;
-  top: calc(var(--header-h) + var(--sp-4));
+  top: var(--sp-4);
   display: flex;
   flex-direction: column;
+  /* .main's height is roughly 100vh - header-h; the panel fills that
+   * minus our padding above + below for visual breathing room. */
   max-height: calc(100vh - var(--header-h) - var(--sp-8));
   min-height: 480px;
   overflow: hidden;
@@ -637,7 +651,9 @@ pre code {
   border-radius: var(--radius-lg);
   padding: var(--sp-5) var(--sp-6);
   position: sticky;
-  top: calc(var(--header-h) + var(--sp-4));
+  top: var(--sp-4);
+  max-height: calc(100vh - var(--header-h) - var(--sp-8));
+  overflow-y: auto;
 }
 @media (max-width: 1100px) {
   .observation { position: static; }
@@ -930,7 +946,7 @@ pre code {
   padding: var(--sp-5);
   border-radius: var(--radius-md);
   position: sticky;
-  top: calc(var(--header-h) + var(--sp-4));
+  top: var(--sp-4);
 }
 .placeholder-panel h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 600; }
 .placeholder-panel p { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 var(--sp-3); line-height: 1.55; }
