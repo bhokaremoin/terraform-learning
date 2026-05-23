@@ -40,6 +40,12 @@
   /* Layout */
   --sidebar-w: 240px;
   --header-h: 56px;
+  /* Height the .exercise__header occupies when stuck. Used as the `top`
+   * offset for the sticky editor/observation panel so they don't overlap
+   * the title bar. Kept fixed (rather than measured at runtime) so layout
+   * is deterministic — see ExerciseView where the observation tag is
+   * pulled OUT of the header to keep its height predictable. */
+  --exercise-header-h: 5.5rem;
 
   /* Light palette */
   --bg: #ffffff;
@@ -424,15 +430,31 @@ pre code {
   max-width: 1600px;
   margin: 0 auto;
 }
+/* Sticky title bar inside the .main scroll region. Sits flush at the top
+ * of the scroll viewport whenever you scroll past its natural position.
+ * Height is held constant by keeping its contents to one row (title +
+ * nav). The observation tag for exercises 05/06/10 has been pulled out
+ * and lives in .exercise__content so it doesn't widen the header. */
 .exercise__header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--sp-5);
-  margin-bottom: var(--sp-6);
-  padding-bottom: var(--sp-5);
+  padding: var(--sp-4) 0 var(--sp-4);
+  margin-bottom: var(--sp-5);
   border-bottom: 1px solid var(--border-soft);
-  flex-wrap: wrap;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  /* Keep this in sync with --exercise-header-h above so the editor's
+   * sticky `top` lines up exactly below the bottom border. */
+  min-height: var(--exercise-header-h);
+}
+.exercise__heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 .exercise__eyebrow {
   margin: 0 0 var(--sp-1);
@@ -451,14 +473,13 @@ pre code {
   line-height: 1.2;
 }
 .exercise__obs-tag {
-  margin: var(--sp-3) 0 0;
+  margin: 0 0 var(--sp-5);
   color: var(--tag-fg);
   background: var(--tag-bg);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
   font-size: var(--fs-sm);
-  display: inline-block;
-  line-height: 1.5;
+  line-height: 1.55;
   max-width: 60ch;
 }
 .exercise__nav { display: flex; gap: var(--sp-2); align-items: center; }
@@ -507,20 +528,18 @@ pre code {
  * Editor panel
  * ========================================================================= */
 
-/* Sticky inside .main (which is now the scroll container). `top` is
- * relative to .main's top edge, not the viewport — header is outside
- * the scroll context so we don't add header-h here. */
+/* Sticky inside .main. `top` sits exactly below the sticky exercise
+ * header, so the two stuck rows don't overlap. `max-height` is the
+ * viewport minus the two sticky bars and a little bottom breathing room. */
 .editor-panel {
   border: 1px solid var(--border-soft);
   background: var(--bg);
   border-radius: var(--radius-lg);
   position: sticky;
-  top: var(--sp-4);
+  top: calc(var(--exercise-header-h) + var(--sp-3));
   display: flex;
   flex-direction: column;
-  /* .main's height is roughly 100vh - header-h; the panel fills that
-   * minus our padding above + below for visual breathing room. */
-  max-height: calc(100vh - var(--header-h) - var(--sp-8));
+  max-height: calc(100vh - var(--header-h) - var(--exercise-header-h) - var(--sp-6));
   min-height: 480px;
   overflow: hidden;
   box-shadow: 0 1px 0 rgba(0,0,0,0.02);
@@ -651,8 +670,8 @@ pre code {
   border-radius: var(--radius-lg);
   padding: var(--sp-5) var(--sp-6);
   position: sticky;
-  top: var(--sp-4);
-  max-height: calc(100vh - var(--header-h) - var(--sp-8));
+  top: calc(var(--exercise-header-h) + var(--sp-3));
+  max-height: calc(100vh - var(--header-h) - var(--exercise-header-h) - var(--sp-6));
   overflow-y: auto;
 }
 @media (max-width: 1100px) {
@@ -946,7 +965,7 @@ pre code {
   padding: var(--sp-5);
   border-radius: var(--radius-md);
   position: sticky;
-  top: var(--sp-4);
+  top: calc(var(--exercise-header-h) + var(--sp-3));
 }
 .placeholder-panel h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 600; }
 .placeholder-panel p { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 var(--sp-3); line-height: 1.55; }

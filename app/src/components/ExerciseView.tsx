@@ -73,18 +73,13 @@ export default function ExerciseView() {
   return (
     <article className="exercise">
       <header className="exercise__header">
-        <div>
+        <div className="exercise__heading">
           <p className="exercise__eyebrow">
             Exercise {exercise.id}
             {completed && <span className="exercise__done"> · completed</span>}
             {peeked && !completed && <span className="exercise__done"> · solution peeked</span>}
           </p>
           <h1 className="exercise__title">{stripIdPrefix(exercise.title)}</h1>
-          {exercise.kind === 'observation' && (
-            <p className="exercise__obs-tag">
-              Observation exercise · the learning happens in the terraform CLI; tick the checklist after you've followed the steps locally.
-            </p>
-          )}
         </div>
         <nav className="exercise__nav" aria-label="Exercise navigation">
           {prev ? (
@@ -102,6 +97,11 @@ export default function ExerciseView() {
 
       <div className="exercise__body">
         <section className="exercise__content">
+          {exercise.kind === 'observation' && (
+            <p className="exercise__obs-tag">
+              Observation exercise · the learning happens in the terraform CLI; tick the checklist after you've followed the steps locally.
+            </p>
+          )}
           <MarkdownRenderer source={exercise.readme} />
           <SolutionPanel exercise={exercise} previouslyPeeked={peeked} />
         </section>
