@@ -326,11 +326,17 @@ pre code {
 
 .main {
   overflow-y: auto;
-  padding: var(--sp-8) var(--sp-8) var(--sp-12);
+  /* No top padding here: the sticky .exercise__header needs to sit flush
+   * against the top of .main's scrollport, otherwise the padding-top area
+   * would scroll with content visible through it. Per-page top spacing
+   * lives on the inner elements (.exercise__header has its own padding,
+   * .home gets margin-top below). */
+  padding: 0 var(--sp-8) var(--sp-12);
   min-width: 0;
+  background: var(--bg);
 }
 @media (max-width: 768px) {
-  .main { padding: var(--sp-5) var(--sp-5) var(--sp-10); }
+  .main { padding: 0 var(--sp-5) var(--sp-10); }
 }
 
 /* =========================================================================
@@ -340,6 +346,7 @@ pre code {
 .home {
   max-width: 880px;
   margin: 0 auto;
+  padding-top: var(--sp-8);
 }
 .home__hero h1 {
   font-size: var(--fs-2xl);
@@ -440,7 +447,9 @@ pre code {
   justify-content: space-between;
   align-items: center;
   gap: var(--sp-5);
-  padding: var(--sp-4) 0 var(--sp-4);
+  /* Top padding here is the only thing above the title when stuck.
+   * Below: padding + border give the visual separator. */
+  padding: var(--sp-5) 0 var(--sp-4);
   margin-bottom: var(--sp-5);
   border-bottom: 1px solid var(--border-soft);
   background: var(--bg);
