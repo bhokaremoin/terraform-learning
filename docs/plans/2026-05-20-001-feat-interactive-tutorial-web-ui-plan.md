@@ -1,7 +1,7 @@
 ---
 title: "feat: Interactive Web UI for Terraform Tutorial"
 type: feat
-status: active
+status: completed
 date: 2026-05-20
 origin: docs/brainstorms/2026-05-20-interactive-terraform-tutorial-web-requirements.md
 ---

@@ -147,3 +147,63 @@ No exercise content was hand-edited.
 ## Issues / corrections
 
 If you spot something wrong — a broken exercise, a stale fact, a confusing explanation — open an issue on GitHub. The fastest path to a fix is a PR with the corrected text.
+
+---
+
+## v2 addendum: interactive web tutorial
+
+Roughly a day after v1 shipped, the same Claude (Opus 4.7 in Claude Code) was asked to wrap the static markdown tutorial in an interactive web UI. The workflow was `/ce:brainstorm` → `/ce:plan` → `/ce:work`. The artifacts:
+
+- **Brainstorm requirements:** [`docs/brainstorms/2026-05-20-interactive-terraform-tutorial-web-requirements.md`](./docs/brainstorms/2026-05-20-interactive-terraform-tutorial-web-requirements.md). The product decisions (structural in-browser validation; Node-based bootstrap; all 10 exercises with mixed auto-validate / observation flow; markdown as the source of truth).
+- **Implementation plan:** [`docs/plans/2026-05-20-001-feat-interactive-tutorial-web-ui-plan.md`](./docs/plans/2026-05-20-001-feat-interactive-tutorial-web-ui-plan.md). Seven phases, library picks with rationale, file layout, validator authoring contract.
+- **Code:** the `app/` directory (Vite + React 18 + TypeScript), plus root-level `Makefile`.
+
+### What changed in v2
+
+- **`make up`** boots a SPA at <http://localhost:5173>. The only host prerequisite is Node.js 20+.
+- **All 10 exercises render in the browser** from the same markdown files v1 shipped — no content is duplicated. The web app reads `01-hello-world/README.md` etc. via Vite glob raw imports at build time.
+- **7 exercises auto-grade.** The user types HCL in a CodeMirror editor; a Validate button parses it with a handrolled HCL2 subset parser (`app/src/lib/hcl.ts`) and runs per-exercise structural assertions. Loose-by-design — accepts supersets and equivalent forms.
+- **3 exercises (05, 06, 10) self-attest** via an observation checklist; the learning is in running terraform CLI locally and watching plan/state behavior.
+- **State persists** in browser `localStorage` (typed code per exercise, completion flags, peeked flags, current exercise). One global Reset all clears it.
+
+### What didn't survive contact with reality
+
+The initial brainstorm chose **Docker compose** as the bootstrap story. During Phase 1 a wiring bug surfaced (Docker COPY with a glob into a single dest dir flattens multi-source content, breaking the exercise-dir layout inside the build container), and the friction of asking learners to install Docker just to read a tutorial felt wrong. The decision was reversed mid-implementation to a Node-based bootstrap. Both planning docs carry inline notes about the reversal so the history isn't lost.
+
+### The full v2 prompt
+
+```
+next task - use first /ce:brainstorm
+
+Details - this tutorial - I want based on a web application. meaning instead
+of this text and files based manually - learning and checking. what if this
+repo had the web setup. and i would solve and learning this terraform
+tutorial in interactive web.
+
+So brainstorm on this - so basically - anyone can simply clone the repo -
+then run make up command - which will open the webpage - we they can perform
+this tutorial and solves one by one questions and get onboarded on
+terraform - they should be able to validate their solution - as if stuck
+should be able to refer to the solution. also the app saves the current
+state. and also has option to reset back to start.
+
+Also since it simple learning - so no need to complex graphics or complex
+application state - simple and descent would work
+```
+
+That brief — explicit value prop, hard constraints, "simple/decent" steering — is enough to drive a multi-step brainstorm + plan + implementation. The brainstorm did 4 single-select questions to lock product decisions; the plan resolved 8 deferred technical questions; the work shipped in 7 phases over 7 commits.
+
+### Tooling for v2
+
+| Component | Version |
+|---|---|
+| Claude model | Claude Opus 4.7 (`claude-opus-4-7`) |
+| Claude Code | latest at time of v2 generation |
+| Node.js (build) | 24.10.0 / 20.x in CI |
+| Vite | 6.x |
+| React | 18.3.x |
+| CodeMirror | 6.x |
+
+### Caveat (v2 specific)
+
+The HCL parser in `app/src/lib/hcl.ts` is a handwritten subset, not a full HCL2 implementation. It covers what the tutorial's 10 exercises need and tolerates the rest. If you add an exercise that uses a richer HCL construct (e.g., a for-expression at the top level of an attribute), extend the parser and add tests. The plan documents a documented fallback to `@cdktf/hcl2json` via WASM if hand-maintaining the parser becomes too much work.

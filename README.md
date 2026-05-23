@@ -16,9 +16,13 @@ cd terraform-learning
 make up
 ```
 
-First run installs npm dependencies (~30s on a good network) and starts the Vite dev server. It opens <http://localhost:5173> in your browser. Stop it with `Ctrl+C`. `make help` lists all targets.
+First run installs npm dependencies (~30s on a good network) and starts the Vite dev server at <http://localhost:5173>. Stop it with `Ctrl+C`. `make help` lists all targets.
 
-The web app validates 7 of the 10 exercises automatically (it parses your HCL in the browser — no Terraform process runs anywhere, no code of yours is executed). The other 3 are observational exercises with a guided self-attest flow. See [`docs/plans/`](./docs/plans/) for the design.
+**How validation works.** The Validate button parses your HCL in the browser with a handrolled HCL2 subset parser, then runs a small structural assertion function per exercise. **Your code is never executed** — no Terraform process anywhere — so the entire arbitrary-code-execution surface is eliminated by construction. 7 of the 10 exercises auto-validate this way. The other 3 (drift detection, replacement vs update, state commands) are **observation exercises**: the learning is in running terraform CLI locally and watching the plan output. The web app gives you a checklist of the expected observations and a Mark complete button.
+
+**Persistence.** Your typed code is saved per-exercise in browser `localStorage`. Completion flags and "solution peeked" markers carry across reloads. One Reset all button in the header clears everything (after a confirmation).
+
+**Contributing to the web app.** See [`app/README.md`](./app/README.md) for the architecture overview, validator authoring contract, and the four-file recipe for adding a new exercise.
 
 ### B — Static markdown tutorial (the original way)
 
