@@ -2,7 +2,7 @@ import type { ObservationSpec } from '../../lib/validator-types';
 
 export const observation: ObservationSpec = {
   why:
-    'State commands (mv, rm, import) are surgical operations on terraform.tfstate. You can\'t practice them without actually running terraform CLI — the file changes are the lesson. The web app provides the script; you run it.',
+    'State commands (mv, rm, import) are surgical operations on terraform.tfstate. You can\'t practice them without actually running terraform CLI — the file changes are the lesson. The web app provides the script; you run it. Note: import is provider-specific. `local_file` does not support it, so the import section uses `random_integer` instead.',
   checklist: [
     {
       label: 'Apply the starter and confirm `terraform state list` shows local_file.alpha/beta/gamma.',
@@ -18,8 +18,8 @@ export const observation: ObservationSpec = {
       label: 'Run `terraform state rm local_file.beta`. The file stays on disk; state forgets it.',
     },
     {
-      label: 'Create delta.txt by hand and `terraform import` it into a matching resource block.',
-      hint: 'For local_file the import ID is the file path: `terraform import local_file.delta "$(pwd)/delta.txt"`.',
+      label: 'Add a `random_integer "adopted"` block (min=1, max=100) and import an existing value: `terraform import random_integer.adopted "42,1,100"`.',
+      hint: 'Import IDs are provider-specific. random_integer uses the composite `result,min,max`. Heads-up: `terraform import local_file.x ...` returns "Resource Import Not Implemented" — that resource doesn\'t support import.',
     },
     {
       label: 'Run plan and confirm it shows "No changes" after the import.',

@@ -7,25 +7,26 @@ There's no "completed" code for this exercise. The whole point is to make three 
 Plan output (relevant portion):
 
 ```text
-  # local_file.greeting will be updated in-place
-  ~ resource "local_file" "greeting" {
-        id                   = "..."
-      ~ content              = "Hello there\n" -> "Hello again\n"
+  # local_file.greeting must be replaced
+-/+ resource "local_file" "greeting" {
+      ~ content              = <<-EOT # forces replacement
+            -Hello there
+            +Hello again
+        EOT
       ~ content_base64sha256 = "..." -> (known after apply)
       ~ content_base64sha512 = "..." -> (known after apply)
       ~ content_md5          = "..." -> (known after apply)
       ~ content_sha1         = "..." -> (known after apply)
       ~ content_sha256       = "..." -> (known after apply)
       ~ content_sha512       = "..." -> (known after apply)
-        # (3 unchanged attributes hidden)
+      ~ id                   = "..." -> (known after apply)
+        # (others unchanged)
     }
 
-Plan: 0 to add, 1 to change, 0 to destroy.
+Plan: 1 to add, 0 to change, 1 to destroy.
 ```
 
-The `~` next to the resource means in-place update. Several `content_*` checksums become "known after apply" because they're derived from content. The file's path doesn't change, so no replacement.
-
-> **Provider-version note:** Older versions of the `hashicorp/local` provider (pre-2.x) marked `content` as ForceNew, in which case you'd see `-/+` and `(forces replacement)`. Always read the plan rather than assuming.
+`# forces replacement` sits on the `content` line. With the `hashicorp/local` provider, `content` is marked ForceNew — the provider has no update method, so any content change destroys the old file and creates a new one. With most cloud providers a content/body change would be an in-place `~ update`; this is provider-specific. Read the plan.
 
 ## Change 2: modify `random_pet.length`
 
@@ -81,4 +82,8 @@ It's a property of the resource type, not your choice. Your only options are: ac
 ## Answers to the experiments
 
 1. **`apply -replace=local_file.greeting`** with no code changes shows a plan with `-/+` for that resource. Useful for "I want this rebuilt, even though no inputs changed" — e.g., the resource went bad in some way Terraform can't see.
-2. **`create_before_destroy = true`.** Apply order flips: the new resource is created first, then the old one destroyed. This is the right move for resources behind a router/load balancer that can absorb the brief overlap. It's *wrong* for resources with a uniqueness constraint (you can't have two with the same name), so Terraform may refuse if it detects a conflict. For our local file with a fixed filename, `create_before_destroy` will fail if the filename is unchanged but allowed succeed if the filename is the thing that changed (because the new file's path differs).
+2. **`create_before_destroy = true`.** Apply order flips: the new resource is created first, then the old one destroyed. This is the right move for resources behind a router/load balancer that can absorb the brief overlap. It's *wrong* for resources with a uniqueness constraint (you can't have two with the same name), so Terraform may refuse if it detects a conflict. For our local file with a fixed filename, `create_before_destroy` will fail if the filename is unchanged but will succeed if the filename is the thing that changed (because the new file's path differs).
+
+## Why this exercise feels like "every change is a replacement"
+
+Because, with `local_file`, every change is. The hashicorp/local provider doesn't implement Update on this resource — `content`, `filename`, `file_permission`, all ForceNew. That makes it bad for showing the in-place case, but excellent for practicing the skill that actually matters: locating the `# forces replacement` annotation, identifying the offending attribute, and predicting cascades. When you graduate to AWS/GCP/Azure you'll find many attributes that *are* updatable in place (instance tags, security-group rules, IAM policies, …) and many that aren't (instance type, region, primary key) — and the only reliable way to know which is which is to read the plan.

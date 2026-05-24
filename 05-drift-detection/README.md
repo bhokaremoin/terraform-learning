@@ -13,8 +13,15 @@ This is one of Terraform's most useful properties: it's continuously reconciling
 - [ ] Apply a simple `local_file` that writes a known string.
 - [ ] Hand-edit the file (using `echo` or your editor) to change its content.
 - [ ] Run `terraform plan` and read the drift output carefully.
+- [ ] Also run `terraform plan -refresh-only` and notice it explicitly calls out drift.
 - [ ] Run `terraform apply` and watch Terraform restore the file to match your code.
 - [ ] Try the reverse: delete the file entirely, then plan.
+
+### Note on `local_file` and identity
+
+`local_file` is a deliberately simple resource for this tutorial. Its `id` in state is the SHA1 of its content. That means when you change the file by hand, refresh sees a different SHA1 and concludes "the resource I created is gone" — so plan proposes to **create** a new one, not to update one in place. The same thing happens when you `rm` the file. From the plan output, edit and delete look identical for this provider.
+
+With most other providers (AWS, GCP, Azure, …) drift on a managed attribute shows up as `~ update in place` because those resources have a stable identity (an ARN, a UUID) that survives content changes. The lesson is the same — Terraform reconciles code, state, and reality — just the surface symbols differ. Read your plan carefully.
 
 ## Run it
 
@@ -27,20 +34,23 @@ cat managed.txt        # should show "Managed by Terraform\n"
 echo "I did this by hand" > managed.txt
 cat managed.txt
 
-# Now plan. Read the output carefully — look for:
-#  - "Note: Objects have changed outside of Terraform"
-#  - A "~ update in place" block showing the diff
+# Now plan. With local_file, refresh sees the SHA1 changed and treats the
+# resource as gone, so plan proposes to (re)create.
+# Look for: "Plan: 1 to add, 0 to change, 0 to destroy."
 terraform plan
+
+# Run plan -refresh-only to see the drift call-out explicitly. It will say
+# "Objects have changed outside of Terraform" and list local_file.managed as
+# "has been deleted" (with this provider, edits look like deletions — see Note above).
+terraform plan -refresh-only
 
 # Apply restores the file to match your code.
 terraform apply
 cat managed.txt        # back to "Managed by Terraform\n"
 
-# Now go further: delete the file outright.
+# Now try deletion: rm the file outright.
 rm managed.txt
-terraform plan
-# This time the resource is going to be RECREATED, not updated —
-# Terraform sees it's gone from reality.
+terraform plan         # same shape as the edit case — Plan: 1 to add.
 
 terraform apply
 cat managed.txt        # back again
@@ -51,7 +61,7 @@ terraform destroy
 ## Predict, then verify
 
 1. When you hand-edit `managed.txt`, the state file is unchanged. After running `terraform plan`, does the state file change? (Hint: look at the modify time of `terraform.tfstate` before and after plan.)
-2. What's the difference between the plan output when you **edit** the file vs. when you **delete** it? One should be `~ update`; what's the other?
+2. What's the difference between the plan output when you **edit** the file vs. when you **delete** it? (With `local_file` specifically — the answer might surprise you. See the Note above.)
 3. If you hand-edit the file AND your `.tf` to a third value, what happens on apply? Whose value wins?
 
 ## Hints
@@ -73,7 +83,7 @@ You can run `terraform plan -refresh-only` to do the refresh step and show drift
 <details>
 <summary>Hint 3 — what state actually stores</summary>
 
-For `local_file`, state stores the SHA1 of content, not the literal content (look at `id` in `terraform state show`). On refresh, Terraform reads the file, recomputes the SHA1, and compares. That's how it detects drift cheaply.
+For `local_file`, state stores the literal `content` string **and** several derived checksums (`content_sha1`, `content_sha256`, …). The `id` attribute is the SHA1 of `content`. On refresh, Terraform reads the file, recomputes the SHA1, and compares it to the stored `id`. If they differ, the provider treats the previously-managed resource as gone (because its `id` no longer matches what's on disk) — that's why a hand-edit plan looks like a "create new" rather than an "update".
 
 </details>
 
@@ -85,5 +95,5 @@ For `local_file`, state stores the SHA1 of content, not the literal content (loo
 
 ## Experiments
 
-1. **Two-way drift:** change both the file content (by hand) and the `.tf` `content` argument. Predict what plan shows. The diff should be from the new reality to your new code.
-2. **Permission drift:** change the file's permissions with `chmod 644 managed.txt` (or whatever differs from the resource's `file_permission` argument). Run plan. Does Terraform notice?
+1. **Two-way drift:** change both the file content (by hand) and the `.tf` `content` argument. Predict what plan shows. With `local_file` you'll see a `+ create` reflecting the new code value — not a from/to diff, because state thinks the old resource is gone.
+2. **Permission drift:** change the file's permissions with `chmod 600 managed.txt` (or whatever differs from the resource's `file_permission` argument). Run plan. Does Terraform notice? (It does — and with `local_file` that's also a replacement, not an in-place change.)

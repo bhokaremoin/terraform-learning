@@ -13,8 +13,10 @@ This exercise puts you in a few realistic scrapes and asks you to fix them with 
 - [ ] **Part A: Inspect.** Run `terraform apply`, then explore `terraform state list` and `terraform state show`.
 - [ ] **Part B: Rename without churn.** Rename one resource in your `.tf` and use `terraform state mv` so apply is a no-op rather than destroy+create.
 - [ ] **Part C: Forget without deleting.** Remove a resource from Terraform's state with `terraform state rm` and confirm the file on disk still exists.
-- [ ] **Part D: Adopt an existing file.** Create a file by hand, then write a `resource` block matching it, then use `terraform import` to bring it into state.
+- [ ] **Part D: Adopt an existing value.** Pretend a `random_integer` already exists with a known result. Add a matching resource block, then use `terraform import` to bring it into state without re-rolling the value.
 - [ ] **Part E: The broken scenario.** Follow the steps below to break state, then fix it with state commands.
+
+> **Why `random_integer` for the import demo?** Import is provider-specific, and the `hashicorp/local` provider does **not** implement import for `local_file` (you'll get `Error: Resource Import Not Implemented`). `random_integer` does implement it, and its import ID is a simple `result,min,max` string — perfect for a hands-on demo. The mechanics you learn here transfer directly to importing an AWS bucket, a GCP instance, or a Datadog monitor.
 
 ## Run it
 
@@ -43,22 +45,36 @@ terraform state list # local_file.beta gone from state
 # Terraform sees `local_file.beta` declared in code and will try to RECREATE it.
 # To make this stick, also delete the resource block from main.tf.
 
-# --- Part D: import an existing file ---
-echo "I was created by hand" > delta.txt
+# --- Part D: import an existing value ---
+# Pretend a random_integer "result=42, min=1, max=100" was created elsewhere
+# and you'd like to manage it without re-rolling.
 # In main.tf, add:
-#   resource "local_file" "delta" { filename = "delta.txt"; content = "I was created by hand\n" }
-terraform plan       # Terraform wants to CREATE delta.txt — but it already exists!
-# Bring it under management instead:
-terraform import local_file.delta delta.txt
-terraform plan       # now: No changes (if content matches what's on disk).
+#
+#   resource "random_integer" "adopted" {
+#     min = 1
+#     max = 100
+#   }
+#
+# Run plan first — Terraform wants to CREATE a fresh random_integer, which
+# would pick a *different* number. Don't apply. Import instead:
+terraform import random_integer.adopted "42,1,100"
+terraform state show random_integer.adopted    # result = 42, in state
+terraform plan       # now: No changes.
 
 # --- Part E: the broken scenario ---
-# 1. terraform apply to baseline.
-# 2. Hand-edit terraform.tfstate.backup or simulate corruption: just delete
-#    one resource block in main.tf without state mv, and apply.
-#    The file gets destroyed. Now in state you have N-1 resources but the
-#    REAL file on disk (if you copied it elsewhere first) might still exist.
-# 3. Use `terraform state` and `terraform import` to recover.
+# 1. With the baseline applied (alpha/beta/gamma + random_integer.adopted), back up gamma.txt:
+#    cp gamma.txt /tmp/gamma.backup
+# 2. Delete the `local_file.gamma` block from main.tf and apply. Terraform destroys gamma.txt.
+# 3. Restore the file from your backup: cp /tmp/gamma.backup gamma.txt
+# 4. State has no record of gamma anymore; reality has the file. Restore the
+#    resource block in main.tf, then import is impossible (local_file doesn't
+#    support import). Use `terraform apply` carefully — it will overwrite the
+#    file with your code's content. If your code matches reality byte-for-byte,
+#    this is a no-op on disk; otherwise reality is replaced by code.
+#
+# Lesson: for resources whose provider DOES support import, recovery is a
+# clean `terraform import`. For ones that don't, you reconcile by making
+# code match reality and letting apply (re)create.
 
 terraform destroy
 ```
@@ -93,23 +109,25 @@ terraform state mv 'local_file.things[0]' 'local_file.things["alpha"]'
 terraform import <resource_address> <provider_specific_id>
 ```
 
-For `local_file`, the ID is just the file path: `terraform import local_file.delta delta.txt`. For other providers it might be an ARN, a UUID, a composite key — check the provider docs.
+For `random_integer`, the ID is the composite `result,min,max`: `terraform import random_integer.adopted "42,1,100"`. For AWS resources it's typically an ARN or resource ID; for GCP it's the full resource path; for others a UUID — check the provider docs for the exact format.
 
 Modern alternative (Terraform 1.5+): declarative `import` blocks in HCL.
 
 ```hcl
 import {
-  to = local_file.delta
-  id = "delta.txt"
+  to = random_integer.adopted
+  id = "42,1,100"
 }
 
-resource "local_file" "delta" {
-  filename = "delta.txt"
-  content  = "I was created by hand\n"
+resource "random_integer" "adopted" {
+  min = 1
+  max = 100
 }
 ```
 
 Run plan/apply and the import happens. Delete the `import` block afterward.
+
+Heads-up: not every resource supports import. `local_file` in this tutorial does not — try `terraform import local_file.foo bar.txt` and you'll see `Error: Resource Import Not Implemented`. That's why Part D uses `random_integer`.
 
 </details>
 

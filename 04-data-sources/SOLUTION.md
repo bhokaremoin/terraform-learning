@@ -35,7 +35,9 @@ output "output_content" {
 
 1. **The data source does NOT count as `to add`.** It's a read, not a create. Plan says `Plan: 1 to add, 0 to change, 0 to destroy.` (just the `local_file.output`). The data source appears as `data.local_file.input: Reading...` / `Read complete` separately.
 2. **`terraform state list` shows both** — `data.local_file.input` and `local_file.output`. Data source results are stored in state to detect changes between plans.
-3. **Changing `input.txt` changes the data source's content**, which is referenced by the resource's `content` argument. So on the next plan, Terraform compares state's idea of `local_file.output.content` ("BANANA\n") to the new computed value ("APPLE\n") and shows an in-place update.
+3. **Changing `input.txt` changes the data source's content**, which is referenced by the resource's `content` argument. So on the next plan, Terraform compares state's idea of `local_file.output.content` ("BANANA\n") to the new computed value ("APPLE\n") and proposes a **replacement** (`-/+`): the plan shows `Plan: 1 to add, 0 to change, 1 to destroy.` with `content = "BANANA\n" -> (known after apply) # forces replacement`.
+
+   Why not an in-place update? The `hashicorp/local` provider has no update method on `local_file` — every attribute including `content` is marked `ForceNew`, so any change forces destroy + create. With most cloud providers many attributes are updatable in place, but you can't assume; always read the plan. (Exercise 06 explores this in depth.)
 
 ## Resource vs. data source — when to use each
 
