@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getExerciseById, getNextExerciseId, getPrevExerciseId } from '../lib/content';
+import { writeToDisk } from '../lib/disk-sync';
 import { getRegistryEntry } from '../lib/registry';
 import { getCode, setCode, setCurrent } from '../lib/storage';
 import { useProgress } from '../lib/useProgress';
@@ -34,30 +35,52 @@ export default function ExerciseView() {
   const initialCode = useMemo(() => getCode(id) ?? exercise.starter, [id, exercise.starter]);
   const [editorValue, setEditorValue] = useState(initialCode);
 
+  // A ref that always points at the latest editorValue, no closure staleness.
+  // Used by the navigation cleanup below: the cleanup's closure captures the
+  // OLD id (correct — we want to save against the exercise we're leaving)
+  // but reads the current value from the ref so we don't write stale data.
+  const editorValueRef = useRef(editorValue);
+  editorValueRef.current = editorValue;
+
   useEffect(() => {
     setEditorValue(getCode(id) ?? exercise.starter);
   }, [id, exercise.starter]);
 
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persist = useCallback((thisId: string, thisSlug: string, value: string) => {
+    setCode(thisId, value);
+    // Fire-and-forget: writes through to <repo>/<slug>/main.tf via the dev
+    // server's /__sync endpoint so terraform CLI users see the latest.
+    void writeToDisk(thisSlug, value);
+  }, []);
+
   const onEditorChange = useCallback(
     (value: string) => {
       setEditorValue(value);
       if (persistTimer.current) clearTimeout(persistTimer.current);
-      persistTimer.current = setTimeout(() => setCode(id, value), DEBOUNCE_MS);
+      const thisId = id;
+      const thisSlug = exercise.slug;
+      persistTimer.current = setTimeout(() => persist(thisId, thisSlug, value), DEBOUNCE_MS);
     },
-    [id],
+    [id, exercise.slug, persist],
   );
 
-  // Flush pending writes on unmount / id change.
+  // Flush pending writes whenever we leave this exercise (id changes) or
+  // unmount the screen. The ref-based read avoids the stale-closure bug
+  // that used to clobber storage with the starter every time the user
+  // navigated. id and slug are captured BEFORE the effect re-runs.
   useEffect(() => {
+    const thisId = id;
+    const thisSlug = exercise.slug;
     return () => {
       if (persistTimer.current) {
         clearTimeout(persistTimer.current);
-        setCode(id, editorValue);
+        persistTimer.current = null;
       }
+      persist(thisId, thisSlug, editorValueRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, exercise.slug, persist]);
 
   const resetToStarter = () => {
     if (
@@ -67,7 +90,7 @@ export default function ExerciseView() {
       return;
     }
     setEditorValue(exercise.starter);
-    setCode(id, exercise.starter);
+    persist(id, exercise.slug, exercise.starter);
   };
 
   return (
@@ -110,7 +133,15 @@ export default function ExerciseView() {
           {entry?.kind === 'auto' ? (
             <div className="editor-panel">
               <div className="editor-panel__toolbar">
-                <h3 className="editor-panel__title">Your HCL</h3>
+                <div className="editor-panel__title-row">
+                  <h3 className="editor-panel__title">Your HCL</h3>
+                  <span
+                    className="editor-panel__path"
+                    title="In dev mode, your edits sync to this file on disk so you can run terraform CLI against them."
+                  >
+                    {exercise.slug}/main.tf
+                  </span>
+                </div>
                 <button
                   type="button"
                   className="editor-panel__reset"

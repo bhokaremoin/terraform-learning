@@ -560,15 +560,31 @@ pre code {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
   border-bottom: 1px solid var(--border-soft);
   background: var(--bg-alt);
+}
+.editor-panel__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
 }
 .editor-panel__title {
   margin: 0;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--fg-strong);
+  white-space: nowrap;
+}
+.editor-panel__path {
+  color: var(--muted-soft);
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .editor-panel__reset {
   background: none;
