@@ -48,6 +48,12 @@ terraform.rc
 **/gamma.txt
 **/delta.txt
 
+# Web app build artifacts (the SPA in app/ — see Makefile / Dockerfile).
+app/node_modules/
+app/dist/
+app/.vite/
+app/coverage/
+
 # macOS noise.
 .DS_Store
 

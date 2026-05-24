@@ -4,7 +4,29 @@ A hands-on, **offline** Terraform tutorial. Ten progressive exercises that run e
 
 If you're new to Terraform and want a deliberate, reading-the-plan-output style of practice before you touch real infrastructure, this is for you.
 
-## Start here
+## Two ways to use this repo
+
+### A — Interactive web tutorial (recommended for first-time learners)
+
+The repo ships a small web app that wraps the same content with an in-browser editor, instant structural validation of your HCL, persistent progress, and a "show solution" reveal. The only thing you need installed is **Node.js 20+**.
+
+```bash
+git clone https://github.com/bhokaremoin/terraform-learning.git
+cd terraform-learning
+make up
+```
+
+First run installs npm dependencies (~30s on a good network) and starts the Vite dev server at <http://localhost:5173>. Stop it with `Ctrl+C`. `make help` lists all targets.
+
+**How validation works.** The Validate button parses your HCL in the browser with a handrolled HCL2 subset parser, then runs a small structural assertion function per exercise. **Your code is never executed** — no Terraform process anywhere — so the entire arbitrary-code-execution surface is eliminated by construction. 7 of the 10 exercises auto-validate this way. The other 3 (drift detection, replacement vs update, state commands) are **observation exercises**: the learning is in running terraform CLI locally and watching the plan output. The web app gives you a checklist of the expected observations and a Mark complete button.
+
+**Persistence.** Your typed code is saved per-exercise in browser `localStorage`. Completion flags and "solution peeked" markers carry across reloads. One Reset all button in the header clears everything (after a confirmation).
+
+**Contributing to the web app.** See [`app/README.md`](./app/README.md) for the architecture overview, validator authoring contract, and the four-file recipe for adding a new exercise.
+
+### B — Static markdown tutorial (the original way)
+
+If you'd rather work in your editor and the terminal, the markdown tutorial works on its own:
 
 1. Install Terraform (instructions in [`00-START-HERE.md`](./00-START-HERE.md)).
 2. Read [`00-START-HERE.md`](./00-START-HERE.md) end to end — it covers the mental model, the four-command workflow, and how to use the tutorial.
@@ -30,10 +52,14 @@ Keep [`CHEATSHEET.md`](./CHEATSHEET.md) open in a tab while you work.
 ├── 09-modules/                       Extract reusable units; call the same module twice.
 │   └── modules/greeting/             A small, self-contained module to read alongside.
 ├── 10-state-commands/                Inspect and surgically edit state with mv/rm/import.
+├── app/                              Interactive web app (Vite + React + TypeScript).
+├── Makefile                          `make up` (start), `build`, `preview`, `test`, `lint`, `clean`.
+├── docs/brainstorms/                 Requirements docs.
+├── docs/plans/                       Implementation plans.
 ├── GENERATION.md                     How this repo was generated (Claude Code, the original prompt, model details).
 ├── CHEATSHEET.md                     (see above)
 ├── LICENSE                           MIT.
-└── .gitignore                        Ignores .terraform/, *.tfstate, generated files, etc.
+└── .gitignore                        Ignores .terraform/, *.tfstate, generated files, build artifacts, etc.
 ```
 
 Every exercise directory contains three files:

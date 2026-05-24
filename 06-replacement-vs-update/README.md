@@ -14,15 +14,19 @@ In the plan output, the symbols tell you everything:
 | `-/+ resource ...` | Destroy and create replacement |
 | `# ... (forces replacement)` | This specific attribute is what triggered the replacement |
 
+### A note about `local_file`
+
+The `hashicorp/local` provider's `local_file` resource has **no update method** — every attribute is ForceNew, so any change to a `local_file` is always a replacement. That makes it a poor demo of in-place updates but a great demo of **which attribute** caused the replacement (and how it cascades through dependents). In real cloud providers many attributes do update in place; the skill of reading `(forces replacement)` carries over identically.
+
 ## Task
 
 - [ ] Apply the starter, which has a `random_pet` and a `local_file` referencing it.
-- [ ] Make three different changes, one at a time, run `plan` for each, and identify whether each is in-place or replacement:
+- [ ] Make three different changes, one at a time, run `plan` for each, and read the plan carefully:
   1. Change `local_file.content` to something else.
   2. Change `random_pet.length` from 2 to 3.
   3. Change `local_file.filename` to a different file path.
-- [ ] For each change, find the `(forces replacement)` annotation (if any) in the plan and identify the specific attribute.
-- [ ] Apply each change and watch the order: destroy old, create new, vs. update in place.
+- [ ] For each change, find the `(forces replacement)` annotation in the plan and identify the specific attribute that triggered the replacement. For Change 2, also identify the **cascade** — one resource's replacement forces another's.
+- [ ] Apply each change and watch the order: destroy old, then create new.
 
 ## Run it
 
@@ -32,7 +36,7 @@ terraform apply       # baseline
 
 # --- Change 1: modify the file content in main.tf ---
 # Edit `content` in main.tf to "Hello again\n"
-terraform plan        # look at the symbol — ~ or -/+ ?
+terraform plan        # which attribute carries `# forces replacement`?
 terraform apply
 
 # --- Change 2: modify the pet length in main.tf ---
@@ -51,7 +55,7 @@ terraform destroy
 
 ## Predict, then verify
 
-Before each change, write down: will this be `~` (in-place) or `-/+` (replacement)? For replacements, predict which attribute triggers it.
+Before each change, predict which attribute carries the `# forces replacement` annotation, and whether the change cascades into a second resource being replaced.
 
 1. Change `content` only.
 2. Change `random_pet.length`.
