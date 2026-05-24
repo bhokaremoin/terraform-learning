@@ -1,23 +1,22 @@
 /**
- * Best-effort sync from the in-browser editor to <repo>/<slug>/main.tf
- * on disk. Backed by the Vite dev plugin at `app/vite-plugin-tutorial-sync.ts`
- * (see `make up` / `npm run dev`). When the app is served as a static
- * production build there's no backend, so the POST quietly fails — the
- * UI still persists everything to localStorage as before.
+ * Best-effort two-way sync between the in-browser editor and
+ * <repo>/<slug>/main.tf on disk. Backed by the Vite dev plugin at
+ * `app/vite-plugin-tutorial-sync.ts` (see `make up` / `npm run dev`).
+ * When the app is served as a static production build there's no
+ * backend, so the network calls quietly fail and the UI still
+ * persists everything to localStorage as before.
  *
- * Why this exists: learners want to edit in the browser and then run
- * `terraform plan` etc. in their terminal against the same file. Without
- * this, the editor is isolated from disk and the user has to copy-paste.
+ * Why this exists: learners want to edit in the browser AND in their
+ * terminal (vim/vscode) and have both stay coherent. The browser
+ * pushes its edits to disk so `terraform plan` sees them; it also
+ * pulls disk on exercise (re)mount so vim edits show up in the
+ * editor.
  */
 
 type SyncState = 'unknown' | 'available' | 'unavailable';
 
 let state: SyncState = 'unknown';
 
-/**
- * Returns the current sync state. The first POST will discover it; until
- * then the UI can show "checking" or just assume best-effort.
- */
 export function getSyncState(): SyncState {
   return state;
 }
@@ -43,5 +42,25 @@ export async function writeToDisk(slug: string, content: string): Promise<boolea
   } catch {
     state = 'unavailable';
     return false;
+  }
+}
+
+/**
+ * GET <slug>/main.tf from disk via the dev server. Returns the file
+ * contents on success, or null if the file isn't reachable (production
+ * build, network error, or the file genuinely doesn't exist).
+ */
+export async function readFromDisk(slug: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/__sync/${encodeURIComponent(slug)}`, { method: 'GET' });
+    if (!res.ok) {
+      state = 'unavailable';
+      return null;
+    }
+    state = 'available';
+    return await res.text();
+  } catch {
+    state = 'unavailable';
+    return null;
   }
 }

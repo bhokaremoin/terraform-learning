@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { markPeeked } from '../lib/storage';
 import type { Exercise } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -11,6 +11,14 @@ interface Props {
 
 export default function SolutionPanel({ exercise, previouslyPeeked }: Props) {
   const [revealed, setRevealed] = useState(previouslyPeeked);
+
+  // ExerciseView is reused across /exercise/:id route changes (only props
+  // change, no unmount). Without this, "Show solution" clicked on ex01
+  // leaves SolutionPanel `revealed = true`, and when you navigate to ex02
+  // its solution is already shown without a click.
+  useEffect(() => {
+    setRevealed(previouslyPeeked);
+  }, [exercise.id, previouslyPeeked]);
 
   const reveal = () => {
     if (!revealed) {

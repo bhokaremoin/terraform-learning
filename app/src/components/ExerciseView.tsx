@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getExerciseById, getNextExerciseId, getPrevExerciseId } from '../lib/content';
-import { writeToDisk } from '../lib/disk-sync';
+import { readFromDisk, writeToDisk } from '../lib/disk-sync';
 import { getRegistryEntry } from '../lib/registry';
 import { getCode, setCode, setCurrent } from '../lib/storage';
 import { useProgress } from '../lib/useProgress';
@@ -42,17 +42,56 @@ export default function ExerciseView() {
   const editorValueRef = useRef(editorValue);
   editorValueRef.current = editorValue;
 
+  // The value we most recently know is on disk — either because we wrote it
+  // or because we just read it. Used to decide whether a disk write is
+  // necessary (skip if disk already has this exact content) so that:
+  //   1. Navigating between exercises without typing never touches disk.
+  //   2. Edits made externally (vim/vscode) aren't blindly overwritten
+  //      when the user comes back to this exercise.
+  // null means "we don't know yet" (production build, network error, or
+  // before the first disk read on this exercise).
+  const lastWrittenToDiskRef = useRef<string | null>(null);
+
   useEffect(() => {
     setEditorValue(getCode(id) ?? exercise.starter);
   }, [id, exercise.starter]);
 
+  // On exercise mount/change, read the actual file from disk. If it exists
+  // and differs from what the browser would otherwise show, AND the user
+  // hasn't typed since the route landed, adopt the disk content. This is
+  // how vim/vscode edits become visible in the browser editor.
+  useEffect(() => {
+    let cancelled = false;
+    const baseline = getCode(id) ?? exercise.starter; // what the editor was just initialized with
+    void readFromDisk(exercise.slug).then((diskContent) => {
+      if (cancelled || diskContent === null) return;
+      lastWrittenToDiskRef.current = diskContent;
+      // Only adopt disk content if the editor still shows the baseline
+      // value — if the user has typed something since landing here, leave
+      // their input alone; the next debounced sync will write it through.
+      if (diskContent !== baseline && editorValueRef.current === baseline) {
+        setEditorValue(diskContent);
+        setCode(id, diskContent);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, exercise.slug, exercise.starter]);
+
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // localStorage write is unconditional (cheap, idempotent). Disk write is
+  // conditional on the value being different from what we last knew was on
+  // disk — so we never blindly overwrite an external edit, and so that
+  // navigating without typing never produces a disk write.
   const persist = useCallback((thisId: string, thisSlug: string, value: string) => {
     setCode(thisId, value);
-    // Fire-and-forget: writes through to <repo>/<slug>/main.tf via the dev
-    // server's /__sync endpoint so terraform CLI users see the latest.
-    void writeToDisk(thisSlug, value);
+    if (value !== lastWrittenToDiskRef.current) {
+      void writeToDisk(thisSlug, value).then((ok) => {
+        if (ok) lastWrittenToDiskRef.current = value;
+      });
+    }
   }, []);
 
   const onEditorChange = useCallback(
@@ -61,15 +100,17 @@ export default function ExerciseView() {
       if (persistTimer.current) clearTimeout(persistTimer.current);
       const thisId = id;
       const thisSlug = exercise.slug;
-      persistTimer.current = setTimeout(() => persist(thisId, thisSlug, value), DEBOUNCE_MS);
+      persistTimer.current = setTimeout(() => {
+        persist(thisId, thisSlug, value);
+        persistTimer.current = null;
+      }, DEBOUNCE_MS);
     },
     [id, exercise.slug, persist],
   );
 
-  // Flush pending writes whenever we leave this exercise (id changes) or
-  // unmount the screen. The ref-based read avoids the stale-closure bug
-  // that used to clobber storage with the starter every time the user
-  // navigated. id and slug are captured BEFORE the effect re-runs.
+  // Flush any pending write when we leave this exercise. The dirty check
+  // inside persist() means cleanup is a no-op for disk if nothing changed
+  // since the last successful sync — so navigating doesn't clobber disk.
   useEffect(() => {
     const thisId = id;
     const thisSlug = exercise.slug;
@@ -77,8 +118,8 @@ export default function ExerciseView() {
       if (persistTimer.current) {
         clearTimeout(persistTimer.current);
         persistTimer.current = null;
+        persist(thisId, thisSlug, editorValueRef.current);
       }
-      persist(thisId, thisSlug, editorValueRef.current);
     };
   }, [id, exercise.slug, persist]);
 
