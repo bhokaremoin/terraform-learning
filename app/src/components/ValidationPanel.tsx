@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { parseHcl } from '../lib/hcl';
 import { getRegistryEntry } from '../lib/registry';
 import { markCompleted } from '../lib/storage';
@@ -16,6 +16,15 @@ interface Props {
 export default function ValidationPanel({ exerciseId, code, onPass }: Props) {
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [running, setRunning] = useState(false);
+
+  // ValidationPanel is the same React instance across route changes (React
+  // Router reuses ExerciseView). Without this, the previous exercise's
+  // green "Pass" message hangs around when you navigate to the next one.
+  // Reset to a clean slate whenever the exercise id changes.
+  useEffect(() => {
+    setResult(null);
+    setRunning(false);
+  }, [exerciseId]);
 
   const onValidate = () => {
     setRunning(true);
